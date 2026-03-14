@@ -19,6 +19,18 @@ def _resolve_device(requested: str) -> str:
     """Resolve the compute device, falling back to CPU if GPU is unavailable."""
     if requested == "cpu":
         return "cpu"
+    if requested == "directml":
+        try:
+            import torch_directml  # noqa: F401
+
+            logger.info("Using DirectML (AMD GPU via DirectX 12)")
+            return "directml"
+        except ImportError:
+            logger.warning(
+                "DirectML requested but torch-directml is not installed. "
+                "Install with: pip install torch-directml. Falling back to CPU."
+            )
+            return "cpu"
     if requested == "cuda":
         if torch.cuda.is_available():
             device_name = torch.cuda.get_device_name(0)
@@ -42,7 +54,13 @@ def transcribe_source(source: Source, config: AppConfig, session) -> str:
 
     device = _resolve_device(config.whisper.device)
     try:
-        model = whisper.load_model(config.whisper.model, device=device)
+        if device == "directml":
+            import torch_directml
+
+            model = whisper.load_model(config.whisper.model, device="cpu")
+            model = model.to(torch_directml.device())
+        else:
+            model = whisper.load_model(config.whisper.model, device=device)
     except RuntimeError as e:
         if device != "cpu":
             logger.warning("GPU model load failed (%s), retrying on CPU.", e)

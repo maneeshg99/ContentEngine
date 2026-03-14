@@ -33,8 +33,8 @@ class WhisperConfig(BaseModel):
                 "Use device='cuda' for AMD ROCm GPUs (ROCm uses PyTorch's CUDA interface). "
                 "See docs/gpu-setup.md"
             )
-        if v not in ("cpu", "cuda"):
-            raise ValueError(f"device must be 'cpu' or 'cuda', got '{v}'")
+        if v not in ("cpu", "cuda", "directml"):
+            raise ValueError(f"device must be 'cpu', 'cuda', or 'directml', got '{v}'")
         return v
 
 
