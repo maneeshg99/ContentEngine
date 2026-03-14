@@ -149,5 +149,57 @@ def list_items(ctx, list_type):
         console.print(table)
 
 
+@cli.command(name="auto-clip")
+@click.argument("source_id", type=int)
+@click.option("--top-n", default=5, help="Number of top clips to extract")
+@click.option("--min-score", default=6.0, help="Minimum virality score (0-10)")
+@click.option("--api-key", default=None, help="Anthropic API key (or set ANTHROPIC_API_KEY)")
+@click.option("--no-energy", is_flag=True, help="Disable audio energy blending")
+@click.pass_context
+def auto_clip_cmd(ctx, source_id, top_n, min_score, api_key, no_energy):
+    """Automatically find and extract the best clips from a source."""
+    from content_engine.clipper.pipeline import auto_clip
+
+    config = ctx.obj["config"]
+    init_db(config)
+    session = get_session(config)
+    source = session.get(Source, source_id)
+
+    if not source:
+        console.print(f"[red]Source {source_id} not found.[/red]")
+        return
+
+    console.print(f"Auto-clipping: [cyan]{source.title or source.url}[/cyan]")
+    console.print(f"  Settings: top_n={top_n}, min_score={min_score}, energy={'off' if no_energy else 'on'}")
+
+    clips = auto_clip(
+        source, config, session,
+        top_n=top_n,
+        min_score=min_score,
+        api_key=api_key,
+        use_energy=not no_energy,
+    )
+
+    if not clips:
+        console.print("[yellow]No clips met the score threshold.[/yellow]")
+        return
+
+    table = Table(title=f"Extracted {len(clips)} clips")
+    table.add_column("ID", style="cyan")
+    table.add_column("Time Range")
+    table.add_column("Score")
+    table.add_column("Title")
+
+    for c in clips:
+        table.add_row(
+            str(c.id),
+            f"{c.start_time:.1f}s - {c.end_time:.1f}s",
+            f"{c.virality_score:.1f}" if c.virality_score else "-",
+            c.title or "-",
+        )
+
+    console.print(table)
+
+
 if __name__ == "__main__":
     cli()

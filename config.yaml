@@ -13,7 +13,10 @@ database:
 whisper:
   # Model size: tiny, base, small, medium, large
   model: "base"
-  # Device: cpu or cuda
+  # Device: cpu, cuda, or rocm
+  # For AMD GPUs (e.g. RX 6700 XT): install PyTorch ROCm build first:
+  #   pip install torch --index-url https://download.pytorch.org/whl/rocm6.0
+  # Then set device to "cuda" (ROCm uses the same CUDA interface in PyTorch)
   device: "cpu"
   # Language (null = auto-detect)
   language: null
