@@ -13,10 +13,11 @@ database:
 whisper:
   # Model size: tiny, base, small, medium, large
   model: "base"
-  # Device: cpu, cuda, or rocm
+  # Device: cpu or cuda (ROCm also uses "cuda" — do NOT set "rocm")
   # For AMD GPUs (e.g. RX 6700 XT): install PyTorch ROCm build first:
-  #   pip install torch --index-url https://download.pytorch.org/whl/rocm6.0
-  # Then set device to "cuda" (ROCm uses the same CUDA interface in PyTorch)
+  #   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/rocm6.2
+  #   For RX 6700 XT: set HSA_OVERRIDE_GFX_VERSION=10.3.0 — see docs/gpu-setup.md
+  # Then set device to "cuda" below
   device: "cpu"
   # Language (null = auto-detect)
   language: null

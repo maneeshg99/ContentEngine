@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class StorageConfig(BaseModel):
@@ -23,6 +23,19 @@ class WhisperConfig(BaseModel):
     model: str = "base"
     device: str = "cpu"
     language: str | None = None
+
+    @field_validator("device")
+    @classmethod
+    def validate_device(cls, v: str) -> str:
+        v = v.lower().strip()
+        if v == "rocm":
+            raise ValueError(
+                "Use device='cuda' for AMD ROCm GPUs (ROCm uses PyTorch's CUDA interface). "
+                "See docs/gpu-setup.md"
+            )
+        if v not in ("cpu", "cuda"):
+            raise ValueError(f"device must be 'cpu' or 'cuda', got '{v}'")
+        return v
 
 
 class DownloaderConfig(BaseModel):
