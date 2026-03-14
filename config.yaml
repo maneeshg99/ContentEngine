@@ -1,0 +1,47 @@
+# Content Engine Configuration
+
+storage:
+  # Where raw downloads and processed clips are stored
+  raw_dir: "data/raw"
+  clips_dir: "data/clips"
+  rendered_dir: "data/rendered"
+  transcripts_dir: "data/transcripts"
+
+database:
+  url: "sqlite:///data/content_engine.db"
+
+whisper:
+  # Model size: tiny, base, small, medium, large
+  model: "base"
+  # Device: cpu or cuda (ROCm also uses "cuda" — do NOT set "rocm")
+  # For AMD GPUs (e.g. RX 6700 XT): install PyTorch ROCm build first:
+  #   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/rocm6.2
+  #   For RX 6700 XT: set HSA_OVERRIDE_GFX_VERSION=10.3.0 — see docs/gpu-setup.md
+  # Then set device to "cuda" below
+  device: "cpu"
+  # Language (null = auto-detect)
+  language: null
+
+downloader:
+  # Max concurrent downloads
+  max_concurrent: 3
+  # Preferred video format
+  format: "bestvideo[height<=1080]+bestaudio/best[height<=1080]"
+  # Rate limit (bytes/sec, null = unlimited)
+  rate_limit: null
+
+clipper:
+  # Default clip duration range (seconds)
+  min_duration: 30
+  max_duration: 90
+  # Padding added before/after detected segments (seconds)
+  padding: 2
+
+platforms:
+  youtube:
+    enabled: true
+    # credentials stored in credentials store, not here
+  tiktok:
+    enabled: true
+  instagram:
+    enabled: true
