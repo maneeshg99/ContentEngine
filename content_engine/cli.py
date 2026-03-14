@@ -149,6 +149,57 @@ def list_items(ctx, list_type):
         console.print(table)
 
 
+@cli.command()
+@click.argument("clip_id", type=int)
+@click.option("--hook", default="", help="Text hook to overlay (e.g. 'Wait for it...')")
+@click.option("--no-reframe", is_flag=True, help="Skip 9:16 reframing")
+@click.option("--no-captions", is_flag=True, help="Skip caption generation")
+@click.option("--watermark", default="", help="Path to watermark image (PNG)")
+@click.pass_context
+def render(ctx, clip_id, hook, no_reframe, no_captions, watermark):
+    """Render a clip with post-production (reframe, captions, overlays)."""
+    from content_engine.database import Clip
+    from content_engine.editor.render import render_clip_simple
+
+    config = ctx.obj["config"]
+    session = get_session(config)
+    clip = session.get(Clip, clip_id)
+
+    if not clip:
+        console.print(f"[red]Clip {clip_id} not found.[/red]")
+        return
+
+    if not clip.file_path:
+        console.print(f"[red]Clip {clip_id} has no file. Extract it first.[/red]")
+        return
+
+    # Find transcript for the source
+    source = session.get(Source, clip.source_id)
+    transcript_path = source.transcript_path if source else None
+
+    console.print(f"Rendering clip [cyan]{clip_id}[/cyan]...")
+    steps = []
+    if not no_reframe:
+        steps.append("9:16 reframe")
+    if not no_captions and transcript_path:
+        steps.append("captions")
+    if hook:
+        steps.append(f"hook: '{hook}'")
+    if watermark:
+        steps.append("watermark")
+    console.print(f"  Steps: {', '.join(steps) or 'copy only'}")
+
+    output = render_clip_simple(
+        clip, config, session,
+        transcript_path=transcript_path,
+        hook_text=hook,
+        reframe=not no_reframe,
+        captions=not no_captions,
+        watermark_path=watermark,
+    )
+    console.print(f"[green]Rendered:[/green] {output}")
+
+
 @cli.command(name="auto-clip")
 @click.argument("source_id", type=int)
 @click.option("--top-n", default=5, help="Number of top clips to extract")

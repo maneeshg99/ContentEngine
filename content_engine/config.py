@@ -50,6 +50,20 @@ class ClipperConfig(BaseModel):
     padding: int = 2
 
 
+class EditorConfig(BaseModel):
+    reframe: bool = True
+    captions: bool = True
+    caption_font: str = "Arial"
+    caption_font_size: int = 20
+    caption_color: str = "&H00FFFFFF"
+    caption_highlight_color: str = "&H0000FFFF"
+    caption_words_per_group: int = 4
+    caption_uppercase: bool = True
+    watermark_path: str = ""
+    watermark_position: str = "top-right"
+    watermark_opacity: float = 0.7
+
+
 class PlatformConfig(BaseModel):
     enabled: bool = True
 
@@ -66,6 +80,7 @@ class AppConfig(BaseModel):
     whisper: WhisperConfig = WhisperConfig()
     downloader: DownloaderConfig = DownloaderConfig()
     clipper: ClipperConfig = ClipperConfig()
+    editor: EditorConfig = EditorConfig()
     platforms: PlatformsConfig = PlatformsConfig()
 
 

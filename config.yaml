@@ -36,6 +36,23 @@ clipper:
   # Padding added before/after detected segments (seconds)
   padding: 2
 
+editor:
+  # Reframe landscape clips to 9:16 portrait (with face tracking)
+  reframe: true
+  # Burn word-by-word captions from Whisper timestamps
+  captions: true
+  # Caption styling
+  caption_font: "Arial"
+  caption_font_size: 20
+  caption_color: "&H00FFFFFF"           # white (ASS BGR)
+  caption_highlight_color: "&H0000FFFF" # yellow highlight on active word
+  caption_words_per_group: 4
+  caption_uppercase: true
+  # Watermark/logo (leave empty to skip)
+  watermark_path: ""
+  watermark_position: "top-right"       # top-left, top-right, bottom-left, bottom-right
+  watermark_opacity: 0.7
+
 platforms:
   youtube:
     enabled: true
