@@ -18,7 +18,6 @@ dependencies = [
     "rich>=13.0",
     "anthropic>=0.40.0",
     "opencv-python-headless>=4.8",
-    "mediapipe>=0.10",
 ]
 
 [project.optional-dependencies]

@@ -26,11 +26,85 @@ class CropWindow:
     h: int
 
 
+def _load_face_detector():
+    """Load OpenCV's DNN face detector (Caffe model shipped with OpenCV).
+
+    Falls back to Haar cascade if the DNN model files aren't available.
+    Returns a callable: detect(frame) -> list of (x, y, w, h) normalized boxes.
+    """
+    import cv2
+
+    # Try OpenCV DNN face detector first (more accurate)
+    prototxt = None
+    caffemodel = None
+    try:
+        # OpenCV ships these in its data directory
+        import os
+        cv2_dir = os.path.dirname(cv2.__file__)
+        data_dir = os.path.join(cv2_dir, "data")
+
+        proto_candidates = [
+            os.path.join(data_dir, "deploy.prototxt"),
+            os.path.join(data_dir, "haarcascade_frontalface_default.xml"),
+        ]
+        # Check if DNN model files exist (they may not be bundled)
+        dnn_proto = os.path.join(data_dir, "deploy.prototxt")
+        dnn_model = os.path.join(data_dir, "res10_300x300_ssd_iter_140000.caffemodel")
+        if os.path.exists(dnn_proto) and os.path.exists(dnn_model):
+            prototxt = dnn_proto
+            caffemodel = dnn_model
+    except Exception:
+        pass
+
+    if prototxt and caffemodel:
+        net = cv2.dnn.readNetFromCaffe(prototxt, caffemodel)
+        logger.info("Using OpenCV DNN face detector")
+
+        def detect_dnn(frame):
+            h, w = frame.shape[:2]
+            blob = cv2.dnn.blobFromImage(frame, 1.0, (300, 300), (104.0, 177.0, 123.0))
+            net.setInput(blob)
+            detections = net.forward()
+            faces = []
+            for i in range(detections.shape[2]):
+                confidence = detections[0, 0, i, 2]
+                if confidence > 0.5:
+                    box = detections[0, 0, i, 3:7]
+                    # box is (x1, y1, x2, y2) normalized
+                    bx, by, bx2, by2 = box
+                    bw = bx2 - bx
+                    bh = by2 - by
+                    faces.append((bx, by, bw, bh))
+            return faces
+
+        return detect_dnn
+
+    # Fallback: Haar cascade (always available)
+    cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+    cascade = cv2.CascadeClassifier(cascade_path)
+    logger.info("Using OpenCV Haar cascade face detector")
+
+    def detect_haar(frame):
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        h, w = frame.shape[:2]
+        rects = cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+        faces = []
+        for (rx, ry, rw, rh) in rects:
+            # Normalize to 0-1
+            faces.append((rx / w, ry / h, rw / w, rh / h))
+        return faces
+
+    return detect_haar
+
+
 def detect_face_positions(
     video_path: str,
     sample_fps: float = 2.0,
 ) -> list[dict]:
-    """Detect face center positions by sampling frames with MediaPipe.
+    """Detect face center positions by sampling frames with OpenCV.
+
+    Uses OpenCV's DNN face detector if available, otherwise falls back
+    to Haar cascades. No external dependencies beyond opencv-python-headless.
 
     Args:
         video_path: Path to the input video.
@@ -38,15 +112,14 @@ def detect_face_positions(
 
     Returns:
         List of dicts with 'time', 'cx', 'cy' (normalized 0-1) keys.
-        Empty list if no faces detected or MediaPipe unavailable.
+        Empty list if no faces detected or OpenCV unavailable.
     """
     try:
         import cv2
-        import mediapipe as mp
     except ImportError:
         logger.warning(
-            "opencv-python and mediapipe are required for face detection. "
-            "Install with: pip install opencv-python-headless mediapipe"
+            "opencv-python-headless is required for face detection. "
+            "Install with: pip install opencv-python-headless"
         )
         return []
 
@@ -59,10 +132,12 @@ def detect_face_positions(
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     frame_interval = max(1, int(fps / sample_fps))
 
-    face_detection = mp.solutions.face_detection.FaceDetection(
-        model_selection=1,  # full-range model (better for video)
-        min_detection_confidence=0.5,
-    )
+    try:
+        detect = _load_face_detector()
+    except Exception as e:
+        logger.warning("Could not load face detector: %s", e)
+        cap.release()
+        return []
 
     positions = []
     frame_idx = 0
@@ -74,27 +149,22 @@ def detect_face_positions(
 
         if frame_idx % frame_interval == 0:
             time_sec = frame_idx / fps
-            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            results = face_detection.process(rgb)
+            faces = detect(frame)
 
-            if results.detections:
+            if faces:
                 # Use the largest (closest) face
-                best = max(
-                    results.detections,
-                    key=lambda d: d.location_data.relative_bounding_box.width
-                    * d.location_data.relative_bounding_box.height,
-                )
-                bbox = best.location_data.relative_bounding_box
-                cx = bbox.xmin + bbox.width / 2
-                cy = bbox.ymin + bbox.height / 2
+                best = max(faces, key=lambda f: f[2] * f[3])
+                bx, by, bw, bh = best
+                cx = bx + bw / 2
+                cy = by + bh / 2
                 positions.append({"time": time_sec, "cx": cx, "cy": cy})
 
         frame_idx += 1
 
     cap.release()
-    face_detection.close()
 
-    logger.info("Detected faces in %d/%d sampled frames", len(positions), total_frames // frame_interval)
+    sampled = total_frames // frame_interval if frame_interval > 0 else 0
+    logger.info("Detected faces in %d/%d sampled frames", len(positions), sampled)
     return positions
 
 
