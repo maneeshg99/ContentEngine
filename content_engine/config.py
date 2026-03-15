@@ -33,8 +33,8 @@ class WhisperConfig(BaseModel):
                 "Use device='cuda' for AMD ROCm GPUs (ROCm uses PyTorch's CUDA interface). "
                 "See docs/gpu-setup.md"
             )
-        if v not in ("cpu", "cuda"):
-            raise ValueError(f"device must be 'cpu' or 'cuda', got '{v}'")
+        if v not in ("cpu", "cuda", "directml"):
+            raise ValueError(f"device must be 'cpu', 'cuda', or 'directml', got '{v}'")
         return v
 
 
@@ -48,6 +48,20 @@ class ClipperConfig(BaseModel):
     min_duration: int = 30
     max_duration: int = 90
     padding: int = 2
+
+
+class EditorConfig(BaseModel):
+    reframe: bool = True
+    captions: bool = True
+    caption_font: str = "Arial"
+    caption_font_size: int = 20
+    caption_color: str = "&H00FFFFFF"
+    caption_highlight_color: str = "&H0000FFFF"
+    caption_words_per_group: int = 4
+    caption_uppercase: bool = True
+    watermark_path: str = ""
+    watermark_position: str = "top-right"
+    watermark_opacity: float = 0.7
 
 
 class PlatformConfig(BaseModel):
@@ -66,6 +80,7 @@ class AppConfig(BaseModel):
     whisper: WhisperConfig = WhisperConfig()
     downloader: DownloaderConfig = DownloaderConfig()
     clipper: ClipperConfig = ClipperConfig()
+    editor: EditorConfig = EditorConfig()
     platforms: PlatformsConfig = PlatformsConfig()
 
 

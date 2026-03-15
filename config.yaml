@@ -13,12 +13,11 @@ database:
 whisper:
   # Model size: tiny, base, small, medium, large
   model: "base"
-  # Device: cpu or cuda (ROCm also uses "cuda" — do NOT set "rocm")
-  # For AMD GPUs (e.g. RX 6700 XT): install PyTorch ROCm build first:
-  #   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/rocm6.2
-  #   For RX 6700 XT: set HSA_OVERRIDE_GFX_VERSION=10.3.0 — see docs/gpu-setup.md
-  # Then set device to "cuda" below
-  device: "cpu"
+  # Device: cpu, cuda, or directml
+  # - cpu: works everywhere (slower for transcription)
+  # - cuda: for NVIDIA GPUs or AMD ROCm (ROCm uses "cuda" — do NOT set "rocm")
+  # - directml: for AMD/Intel GPUs on Windows/WSL2 (pip install torch-directml)
+  device: "directml"
   # Language (null = auto-detect)
   language: null
 
@@ -36,6 +35,23 @@ clipper:
   max_duration: 90
   # Padding added before/after detected segments (seconds)
   padding: 2
+
+editor:
+  # Reframe landscape clips to 9:16 portrait (with face tracking)
+  reframe: true
+  # Burn word-by-word captions from Whisper timestamps
+  captions: true
+  # Caption styling
+  caption_font: "Arial"
+  caption_font_size: 20
+  caption_color: "&H00FFFFFF"           # white (ASS BGR)
+  caption_highlight_color: "&H0000FFFF" # yellow highlight on active word
+  caption_words_per_group: 4
+  caption_uppercase: true
+  # Watermark/logo (leave empty to skip)
+  watermark_path: ""
+  watermark_position: "top-right"       # top-left, top-right, bottom-left, bottom-right
+  watermark_opacity: 0.7
 
 platforms:
   youtube:

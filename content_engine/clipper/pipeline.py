@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import asdict
 from pathlib import Path
 
@@ -26,13 +27,17 @@ def auto_clip(
 ) -> list[Clip]:
     """Full automated pipeline: transcribe → score → select → cut.
 
+    When an Anthropic API key is available, uses LLM-based virality scoring.
+    Otherwise falls back to local heuristic scoring (free, no API needed).
+
     Args:
         source: Source record (must be at least DOWNLOADED).
         config: App configuration.
         session: Database session.
         top_n: Number of top clips to extract.
         min_score: Minimum virality score threshold.
-        api_key: Anthropic API key (falls back to env var).
+        api_key: Anthropic API key (falls back to env var). If None and no
+                 env var set, uses heuristic scoring instead.
         use_energy: Whether to incorporate audio energy analysis.
         energy_weight: How much audio energy influences the final score (0-1).
 
@@ -63,12 +68,19 @@ def auto_clip(
     if not windows:
         return []
 
-    # Step 4: Score segments with LLM
-    scored_segments = score_segments(
-        windows,
-        api_key=api_key,
-        min_score=min_score,
-    )
+    # Step 4: Score segments — LLM if API key available, otherwise heuristic
+    resolved_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
+    if resolved_key:
+        scored_segments = score_segments(
+            windows,
+            api_key=resolved_key,
+            min_score=min_score,
+        )
+    else:
+        from content_engine.clipper.heuristic_scorer import score_segments_local
+        # Use a lower default threshold for heuristic scoring since scores tend lower
+        effective_min = min(min_score, 4.0)
+        scored_segments = score_segments_local(windows, min_score=effective_min)
 
     # Step 5: Optionally blend in audio energy
     if use_energy and scored_segments:
